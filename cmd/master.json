@@ -1,0 +1,6 @@
+{
+	"role":"clustermanager",
+	"port":"1024",
+	"data":"/export/data/fdb/clustermanager",
+	"log":"/export/logs/fdb/clustermanager"
+}
