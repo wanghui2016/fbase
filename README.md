@@ -3,7 +3,7 @@ F means flat，fast，and flexible
 
 # data model
 
-Namespace -> Table -> Range -> Row = <RowKey, <AttrName, AttrValue>>
+Namespace -> Table -> Range -> Row (RowKey -> AttrName -> AttrValue)
 
 A namespace usually contains multiple tables and a table can consist of unlimited number of rows sorted by keys. 
 
