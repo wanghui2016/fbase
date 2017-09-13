@@ -1,15 +1,11 @@
 # FBASE
-F means flat，fast，and flexible
 
-# features
+multi-model
 
-* strong consistency replication
+multi-region
 
-* auto partitioning
+partitionKey, rowKey, secondary index
 
-* async secondary index construction (no distributed transaction overhead)
-
-* SQL query support
 
 
 
