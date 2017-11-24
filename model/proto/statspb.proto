@@ -1,0 +1,175 @@
+syntax = "proto3";
+package statspb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message ClusterStats {
+
+}
+
+message DataBaseStats {
+
+}
+
+message TableStats {
+
+}
+
+message ProcessStats {
+    double cpu_percent      = 1;
+    uint64 io_read_count    = 2;
+    uint64 io_write_count   = 3;
+    uint64 io_read_bytes    = 4;
+    uint64 io_write_bytes   = 5;
+    uint64 memory_rss       = 6;
+    uint64 memory_vms       = 7;
+    uint64 memory_swap      = 8;
+    double memory_percent   = 9;
+    uint64 net_connection_count = 10;
+    uint64 net_byte_sent    = 11;
+    uint64 net_byte_recv    = 12;
+    uint64 net_packet_sent  = 13;
+    uint64 net_packet_recv  = 14;
+    uint64 net_err_in       = 15;
+    uint64 net_err_out      = 16;
+    uint64 net_drop_in      = 17;
+    uint64 net_drop_out     = 18;
+}
+
+message NodeStats {
+    // Memory
+    uint64 memory_total                      = 1;
+    uint64 memory_used_rss                   = 2;
+    uint64 memory_used                       = 3;
+    uint64 memory_free                       = 4;
+    double memory_used_percent               = 5;
+    uint64 swap_memory_total                 = 6;
+    uint64 swap_memory_used                  = 7;
+    uint64 swap_memory_free                  = 8;
+    double swap_memory_used_percent          = 9;
+    // CPU
+    double cpu_proc_rate                     = 10;
+    uint32 cpu_count                         = 11;
+    double load1                             = 12;
+    double load5                             = 13;
+    double load15                            = 14;
+    // Disk
+    uint64 disk_total                        = 15;
+    uint64 disk_used                         = 16;
+    uint64 disk_free                         = 17;
+    double disk_proc_rate                    = 18;
+    //    float disk_busy                          = 19;
+    uint64 disk_read_byte_per_sec            = 20;
+    uint64 disk_write_byte_per_sec           = 21;
+    //    uint64 disk_read_count_per_sec           = 22;
+    //    uint64 disk_write_count_per_sec          = 23;
+    // Net
+    uint64 net_io_in_byte_per_sec            = 24;
+    uint64 net_io_out_byte_per_sec           = 25;
+    //    uint64 net_io_in_package_per_sec         = 26;
+    //    uint64 net_io_out_package_per_sec        = 27;
+    uint32 net_tcp_connections               = 28;
+    uint64 net_tcp_active_opens_per_sec      = 29;
+    //    uint64 net_ip_recv_package_per_sec       = 30;
+    //    uint64 net_ip_send_package_per_sec       = 31;
+    //    uint64 net_ip_drop_package_per_sec       = 32;
+    //    uint64 net_tcp_recv_package_per_sec      = 33;
+    //    uint64 net_tcp_send_package_per_sec      = 34;
+    //    uint64 net_tcp_err_package_per_sec       = 35;
+    //    uint64 net_tcp_retransfer_package_per_sec = 36;
+
+    // server
+    uint64 ops                      = 37;
+    // Total range count in this store.
+//    uint64 range_count              = 38;
+    // Current range split count.
+    uint32 range_split_count        = 39;
+    // Current sending snapshot count.
+    uint32 sending_snap_count       = 40;
+    // Current receiving snapshot count.
+    uint32 receiving_snap_count     = 41;
+
+    // How many range is applying snapshot.
+    uint32 applying_snap_count      = 42;
+//    uint32 range_leader_count       = 43;
+
+    // When the data server is started (unix timestamp in seconds).
+    uint32 start_time               = 44;
+}
+
+message RangeStats {
+    uint64 size                = 1;
+    uint64 ops                 = 2;
+    uint64 bytes_in_per_sec    = 3;
+    uint64 bytes_out_per_sec   = 4;
+    uint64 total_commands_processed = 5;
+    uint64 keyspace_misses     = 6;
+}
+
+message ReplicaStatus {
+    uint64 Match                = 1;
+    uint64 Commit               = 2;
+    uint64 Next                 = 3;
+    string State                = 4;
+    bool Snapshoting            = 5;
+    bool Paused                 = 6;
+    bool Active                 = 7;
+    int64 LastActive            = 8;
+    int32 Inflight              = 9;
+    uint64 ID                   = 10;
+}
+
+message RaftStatus {
+    uint64 ID                       = 1;
+    uint64 NodeID                   = 2;
+    uint64 Leader                   = 3;
+    uint64 Term                     = 4;
+    uint64 Index                    = 5;
+    uint64 Commit                   = 6;
+    uint64 Applied                  = 7;
+    uint64 Vote                     = 8;
+    int32 PendQueue                 = 9;
+    int32 RecvQueue                 = 10;
+    int32 AppQueue                  = 11;
+    bool Stopped                    = 12;
+    bool RestoringSnapshot          = 13;
+    string State                    = 14;
+    repeated ReplicaStatus Replicas = 15;
+}
+
+enum TpArgs {
+    invalid = 0;
+    msec_index =        1000;
+    sec_index =         1060;
+    min_index =         1061;
+}
+
+message SqlStats {
+    int64 ops           = 1;
+    int64 delay_avg     = 2;
+    bytes tp            = 3;
+}
+
+message SqlSlowlog {
+    uint32 len                           = 1;
+    int32 than                           = 2;
+    uint32 idx                           = 3;
+    repeated SqlSlow log                 = 4;
+}
+
+message SqlSlow {
+    int64 time_sec                     = 1;
+    string sql                         = 2;
+    int64 total_usec                   = 3;
+    int64 call_usec                    = 4;
+}
+
+message SqlTp {
+    int64 calls                        = 1;
+    repeated int64 tp                  = 2;
+    int64 delay_max                    = 3;
+}

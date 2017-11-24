@@ -1,0 +1,111 @@
+syntax = "proto3";
+package schpb;
+
+import "metapb.proto";
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+service SchServer {
+    rpc CreateRange(CreateRangeRequest) returns (CreateRangeResponse) {}
+    rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
+    rpc TransferRangeLeader(TransferRangeLeaderRequest) returns (TransferRangeLeaderResponse) {}
+    rpc OfflineRange(OfflineRangeRequest) returns (OfflineRangeResponse) {}
+    rpc SplitRangePrepare(SplitRangePrepareRequest) returns (SplitRangePrepareResponse) {}
+
+    rpc StopRange(StopRangeRequest) returns (StopRangeResponse) {}
+    rpc CloseRange(CloseRangeRequest) returns (CloseRangeResponse) {}
+}
+
+// TODO identity authentication
+message RequestHeader {
+    uint64 cluster_id         = 1;
+}
+
+message ResponseHeader {
+    uint64 cluster_id          = 1;
+}
+
+message CreateRangeRequest {
+    RequestHeader     header  = 1;
+    metapb.Range      range   = 2;
+    metapb.Option     option  = 3;
+}
+
+message CreateRangeResponse {
+    ResponseHeader     header = 1;
+}
+
+message DeleteRangeRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message DeleteRangeResponse {
+    ResponseHeader     header = 1;
+}
+
+message TransferRangeLeaderRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message TransferRangeLeaderResponse {
+    ResponseHeader     header = 1;
+}
+
+message SplitRangePrepareRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message SplitRangePrepareResponse {
+    ResponseHeader     header = 1;
+    bool           ready      = 2;
+}
+
+message OfflineRangeRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message OfflineRangeResponse {
+    ResponseHeader     header = 1;
+}
+
+enum RangePeerOp {
+    Op_Invalid    = 0;
+    Op_Add        = 1;
+    Op_Remove     = 2;
+}
+
+message ChangeRangePeerRequest {
+    RequestHeader     header  = 1;
+    RangePeerOp op            = 2;
+    metapb.Peer peer          = 3;
+}
+
+message ChangeRangePeerResponse {
+    ResponseHeader     header = 1;
+    metapb.Range range        = 2;
+}
+
+message StopRangeRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message StopRangeResponse {
+    ResponseHeader     header = 1;
+}
+
+message CloseRangeRequest {
+    RequestHeader     header  = 1;
+    uint64        range_id    = 2;
+}
+
+message CloseRangeResponse {
+    ResponseHeader     header = 1;
+}

@@ -1,0 +1,163 @@
+syntax = "proto3";
+package taskpb;
+
+import "metapb.proto";
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+enum TaskType {
+    RangeSplit        = 0;
+    RangeMerge        = 1;
+    RangeTransfer     = 2;
+    RangeFailOver     = 3;
+    RangeDelete       = 4;
+    RangeLeaderTransfer = 5;
+    NodeLogout        = 6;
+    NodeLogin         = 7;
+    NodeFailOver      = 8;
+    RangeAddPeer      = 9;
+    RangeDelPeer      = 10;
+    RangeOffline      = 11;
+    NodeDeleteRanges  = 12;
+    RangeCreate       = 13;
+    NodeCreateRanges  = 14;
+    // 空任务，新分裂的分片才会用
+    EmptyRangeTask    = 15;
+    TableCreate       = 16;
+    TableDelete       = 17;
+}
+
+enum TaskState {
+    TaskWaiting       = 0;
+    TaskRunning       = 1;
+    TaskSuccess       = 2;
+    TaskFail          = 3;
+    TaskTimeout       = 4;
+    TaskHangUp        = 5;
+    TaskPause         = 6;
+    TaskCancel        = 7;
+}
+
+message TaskMeta {
+    uint64      task_id              = 1;
+    int64       create_time          = 2;
+    TaskState   state                = 3;
+    uint64      timeout              = 5;
+}
+
+message TaskRangeSplit {
+    metapb.Range range         = 1;
+    uint64 left_range_id       = 2;
+    uint64 right_range_id      = 3;
+    uint64 range_size          = 4;
+    // 第一次下发任务的时候没有split key，需要data server反馈给master server
+    bytes split_key            = 5;
+}
+
+message TaskRangeMerge {
+
+}
+
+message TaskRangeTransfer {
+    metapb.Range range           = 1;
+    metapb.Peer  up_peer         = 2;
+    metapb.Peer  down_peer       = 3;
+}
+
+message TaskRangeFailover {
+    metapb.Range range           = 1;
+    metapb.Peer  up_peer         = 2;
+    metapb.Peer  down_peer       = 3;
+}
+
+message TaskRangeDelete {
+    metapb.Range       range        = 1;
+}
+
+message TaskRangeLeaderTransfer {
+    metapb.Range range           = 1;
+    metapb.Peer exp_leader       = 2;
+    metapb.Peer pre_leader       = 3;
+}
+
+message TaskNodeLogout {
+    uint64   node_id = 1;
+}
+
+message TaskNodeLogin {
+    uint64   node_id = 1;
+    repeated metapb.Range ranges = 2;
+}
+
+message TaskNodeDeleteRanges {
+    uint64   node_id = 1;
+    repeated uint64 range_ids = 2;
+}
+
+message TaskNodeCreateRanges {
+    uint64   node_id = 1;
+    repeated metapb.Range ranges = 2;
+}
+
+message TaskNodeFailOver {
+    uint64   node_id = 1;
+}
+
+message TaskRangeAddPeer {
+    metapb.Range range           = 1;
+    metapb.Peer  peer            = 2;
+}
+
+message TaskRangeDelPeer {
+    metapb.Range range           = 1;
+    metapb.Peer  peer            = 2;
+}
+
+message TaskRangeOffline {
+    metapb.Range range           = 1;
+}
+
+message TaskRangeCreate {
+    metapb.Range range           = 1;
+}
+
+message TaskRangeEmpty {
+    uint64    range_id  = 1;
+}
+
+message TaskTableCreate {
+    uint64    db_id      = 1;
+    uint64    table_id   = 2;
+    repeated metapb.Range ranges = 3;
+}
+
+message TaskTableDelete {
+    uint64    db_id      = 1;
+    uint64    table_id   = 2;
+}
+
+message Task {
+    TaskType    type                 = 1;
+    TaskMeta    meta                 = 2;
+    TaskRangeSplit range_split       = 3;
+    TaskRangeMerge range_merge       = 4;
+    TaskRangeTransfer range_transfer = 5;
+    TaskRangeFailover range_failover = 6;
+    TaskRangeDelete range_delete     = 7;
+    TaskRangeLeaderTransfer range_leader_transfer = 8;
+    TaskNodeLogout node_logout       = 9;
+    TaskNodeLogin node_login         = 10;
+    TaskNodeFailOver node_failover   = 11;
+    TaskRangeAddPeer range_add_peer  = 12;
+    TaskRangeDelPeer range_del_peer  = 13;
+    TaskRangeOffline range_offline   = 14;
+    TaskNodeDeleteRanges node_delete_ranges = 15;
+    TaskRangeCreate range_create     = 16;
+    TaskNodeCreateRanges node_create_ranges = 17;
+    TaskRangeEmpty  range_empty      = 18;
+    TaskTableCreate table_create     = 19;
+    TaskTableDelete table_delete     = 20;
+}

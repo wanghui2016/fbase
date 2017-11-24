@@ -1,0 +1,76 @@
+syntax = "proto3";
+package errorpb;
+
+import "metapb.proto";
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message NotLeader {
+    uint64 range_id         = 1;
+    metapb.RangeEpoch epoch = 2;
+    metapb.Leader leader      = 3;
+}
+
+message NoLeader {
+    uint64 range_id       = 1;
+}
+
+message NodeNotMatch {
+}
+
+message RangeNotFound {
+    uint64 range_id = 1;
+}
+
+message RangeOffline {
+    uint64 range_id          = 1;
+}
+
+message RangeDamage {
+    uint64 range_id          = 1;
+}
+
+message KeyNotInRange {
+    bytes key              = 1;
+    uint64 range_id        = 2;
+    metapb.Key start_key   = 3;
+    metapb.Key end_key     = 4;
+}
+
+message StaleEpoch {
+    uint64 range_id = 1;
+}
+
+message RangeSplit {
+    uint64 range_id = 1;
+}
+
+message ServerIsBusy {
+}
+
+message StaleCommand {
+}
+
+message RaftEntryTooLarge {
+    uint64 range_id  = 1;
+    uint64 entry_size = 2;
+}
+
+message Error {
+    string message                         = 1;
+    NotLeader not_leader                   = 2;
+    NoLeader  no_leader                    = 3;
+    RangeNotFound range_not_found          = 4;
+    KeyNotInRange key_not_in_range         = 5;
+    StaleEpoch stale_epoch                 = 6;
+    ServerIsBusy server_is_busy            = 7;
+    StaleCommand stale_command             = 8;
+    NodeNotMatch node_not_match            = 9;
+    RaftEntryTooLarge raft_entry_too_large = 10;
+    RangeSplit range_split                 = 11;
+    RangeOffline range_offline             = 12;
+    RangeDamage range_damage               = 13;
+}

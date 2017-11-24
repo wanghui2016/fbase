@@ -1,0 +1,332 @@
+syntax = "proto3";
+package kvrpcpb;
+
+import "metapb.proto";
+import "errorpb.proto";
+import "timestamp.proto";
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+service KvServer {
+    rpc KvRawGet(DsKvRawGetRequest) returns (DsKvRawGetResponse) {}
+    rpc KvRawPut(DsKvRawPutRequest) returns (DsKvRawPutResponse) {}
+    rpc KvRawDelete(DsKvRawDeleteRequest) returns (DsKvRawDeleteResponse) {}
+    rpc KvRawExecute(DsKvRawExecuteRequest) returns (DsKvRawExecuteResponse) {}
+    rpc KvSelect(DsKvSelectRequest) returns (DsKvSelectResponse) {}
+    rpc KvInsert(DsKvInsertRequest) returns (DsKvInsertResponse) {}
+    rpc KvDelete(DsKvDeleteRequest) returns (DsKvDeleteResponse) {}
+    rpc KvUpdate(DsKvUpdateRequest) returns (DsKvUpdateResponse) {}
+    rpc KvReplace(DsKvReplaceRequest) returns (DsKvReplaceResponse) {}
+}
+
+message KvPair {
+    bytes   key   = 1;
+    bytes   value = 2;
+}
+
+message RequestHeader {
+    uint64 cluster_id    = 1;
+    // timestamp specifies time at which read or writes should be
+    // performed. If the timestamp is set to zero value, its value
+    // is initialized to the wall time of the receiving node.
+    timestamp.Timestamp timestamp  = 2 [(gogoproto.nullable) = false];
+    uint64 trace_id      = 3;
+    uint64 range_id      = 4;
+    uint64 node_id       = 5;
+    uint64 store_id      = 6;
+    // 副本是否可读
+    bool replica_readable = 7;
+}
+
+message ResponseHeader {
+    uint64 cluster_id              = 1;
+    // timestamp is set only for non-transactional responses and denotes the
+    // highest timestamp at which a command from the batch executed. At the
+    // time of writing, it is used solely for informational purposes and tests.
+    timestamp.Timestamp timestamp  = 2 [(gogoproto.nullable) = false];
+    uint64 trace_id                = 3;
+    // now is the current time at the node sending the response,
+    // which can be used by the receiver to update its local HLC.
+    timestamp.Timestamp now        = 4 [(gogoproto.nullable) = false];
+    errorpb.Error     error        = 5;
+}
+
+message DsKvRawGetRequest {
+    RequestHeader header     = 1;
+    KvRawGetRequest req      = 2;
+}
+
+message DsKvRawGetResponse {
+    ResponseHeader header    = 1;
+    KvRawGetResponse resp    = 2;
+}
+
+message KvRawGetRequest {
+    bytes key            = 1;
+}
+
+message KvRawGetResponse {
+    // 0: success 1: not leader 2: raft busy 3: other error
+    int32  code           = 1;
+    bytes  value          = 2;
+}
+
+message DsKvRawPutRequest {
+    RequestHeader header = 1;
+    KvRawPutRequest req  = 2;
+}
+
+message DsKvRawPutResponse {
+    ResponseHeader header = 1;
+    KvRawPutResponse resp = 2;
+}
+
+message KvRawPutRequest {
+    bytes key            = 1;
+    bytes value          = 2;
+}
+
+message KvRawPutResponse {
+    int32  code           = 1;
+}
+
+message DsKvRawDeleteRequest {
+    RequestHeader header     = 1;
+    KvRawDeleteRequest req   = 2;
+}
+
+message DsKvRawDeleteResponse {
+    ResponseHeader header         = 1;
+    KvRawDeleteResponse resp      = 2;
+}
+
+message KvRawDeleteRequest {
+    bytes key            = 1;
+}
+
+message KvRawDeleteResponse {
+    int32  code           = 1;
+}
+
+enum ExecuteType {
+    RawInvalid     = 0;
+    RawPut         = 1;
+    RawDelete      = 2;
+}
+
+message KvPairRawExecute {
+    ExecuteType do           = 1;
+    KvPair   kv_pair         = 2;
+}
+
+message DsKvRawExecuteRequest {
+    RequestHeader header                 = 1;
+    KvRawExecuteRequest  req             = 2;
+}
+
+message DsKvRawExecuteResponse {
+    ResponseHeader header       = 1;
+    KvRawExecuteResponse resp   = 2;
+}
+
+message KvRawExecuteRequest {
+    // 历史原因，只能是2
+    repeated KvPairRawExecute  execs     = 1;
+}
+
+message KvRawExecuteResponse {
+    int32 code              = 1;
+}
+
+// for SQL
+message Scope {
+    bytes  start     = 1;
+    bytes  limit     = 2;
+}
+
+message SelectField {
+    enum Type {
+        Column = 0;
+        AggreFunction = 1;
+    }
+
+    Type typ                = 1;
+    string aggre_func       = 2;
+    metapb.Column column    = 3; // select column(if typ is Column) or aggregate function parameter(is typ is AggreFunction)
+}
+
+enum MatchType {
+    Invalid       = 0;
+    Equal         = 1;
+    NotEqual      = 2;
+    Less          = 3;
+    LessOrEqual   = 4;
+    Larger        = 5;
+    LargerOrEqual = 6;
+}
+
+message Match {
+    metapb.Column column   = 1;
+    // 匹配对象
+    bytes threshold        = 2;
+    MatchType match_type   = 3;
+}
+
+message Limit {
+    uint64   offset     = 1;
+    uint64   count      = 2;
+}
+
+message DsKvSelectRequest {
+    RequestHeader header                = 1;
+    KvSelectRequest req                 = 2;
+}
+
+message KvSelectRequest {
+    bytes key                           = 1;       // 只查询单行
+    Scope scope                         = 2;       // 查询主键在某个范围的行
+    repeated SelectField field_list     = 3;       // select filed list
+    repeated Match where_filters        = 4;       // where matches
+    repeated metapb.Column group_bys    = 5;       // group by column ids
+    Limit limit                         = 6;       // max range query num, 0 means no limit
+
+    timestamp.Timestamp timestamp       =  7 [(gogoproto.nullable) = false];    // // timestamp
+}
+
+message Row {
+    bytes key                    = 1;              // encoded group by columns(pk if group-by not exist) value 
+    bytes fields                 = 2;              //  encoded fields
+    repeated int64 aggred_counts = 3;              // aggregated row count(for avg)
+}
+
+message DsKvSelectResponse {
+    ResponseHeader header = 1;
+    KvSelectResponse resp = 2;
+ }
+
+ message KvSelectResponse {
+    // 0: success 1: not leader 2: raft busy 3: raft stop 4: read only 5: other error
+    // >= 1000 SQL server error code
+    // >= 2000 SQL client error code
+    int32 code        = 1;
+    repeated Row rows = 2;
+    // for limit, offset in the range
+    uint64 offset     = 3;
+}
+
+message KeyValue {
+    bytes Key       = 1;  // 编码后的主键
+    bytes Value     = 2; // 编码后的列值（所有非主键列）
+    int64 ExpireAt  = 3; // 过期时间（绝对时间，纳秒值）
+}
+
+message DsKvInsertRequest {
+    RequestHeader header = 1;
+    KvInsertRequest req  = 2;
+}
+
+message DsKvInsertResponse {
+    ResponseHeader header = 1;
+    KvInsertResponse resp = 2;
+}
+
+message KvInsertRequest {
+    repeated KeyValue rows  = 1; // 多行
+    bool  check_duplicate   = 2; // 是否检查对应的主键已经存在
+    timestamp.Timestamp timestamp  = 3 [(gogoproto.nullable) = false];
+}
+
+message KvInsertResponse {
+    int32 code              = 1;
+    //受影响的KV
+    uint64 affected_keys    = 2;
+    // code != 0有效
+    bytes  duplicate_key    = 3;
+}
+
+message KvBatchInsertRequest {
+    repeated KvInsertRequest reqs   = 1;
+}
+
+message KvBatchInsertResponse {
+    repeated KvInsertResponse resps = 2;
+}
+
+message DsKvDeleteRequest {
+    RequestHeader header = 1;
+    KvDeleteRequest req  = 2;
+}
+
+message DsKvDeleteResponse {
+    ResponseHeader header = 1;
+    KvDeleteResponse resp = 2;
+}
+
+message KvDeleteRequest {
+    bytes key                       = 1; // 只删除单行
+    Scope scope                     = 2; // 删除某个范围
+    repeated Match where_filters    = 3;
+    repeated uint64 indexs          = 4; // 删除操作同时需要删除索引记录，因此提供对应的索引列
+    timestamp.Timestamp timestamp   = 10 [(gogoproto.nullable) = false];
+}
+
+message KvDeleteResponse {
+    int32 code              = 1;
+    //受影响的KV
+    uint64 affected_keys    = 2;
+}
+
+message Field {                                                                                                                                                                                               
+    uint64 column_id           = 1;
+    // value是gateway server编码后的数据， data server不解析
+    bytes value                = 2;
+}
+
+message DsKvUpdateRequest {
+    RequestHeader header = 1;
+    KvUpdateRequest req  = 2;
+}
+
+message DsKvUpdateResponse {
+    ResponseHeader header = 1;
+    KvUpdateResponse resp = 2;
+}
+
+message KvUpdateRequest {
+    repeated Field fields           = 1;
+    repeated uint64 indexs          = 2; // 索引列ID
+    repeated Match where_filters    = 3;
+    timestamp.Timestamp timestamp   = 4 [(gogoproto.nullable) = false];
+}
+
+message KvUpdateResponse {
+    int32 code              = 1;
+    //受影响的KV
+    uint64 affected_keys    = 2;
+}
+
+message DsKvReplaceRequest {
+    RequestHeader header = 1;
+    KvReplaceRequest req = 2;
+ }
+
+ message DsKvReplaceResponse {
+    ResponseHeader header    = 1;
+    KvReplaceResponse resp   = 2;
+}
+
+message KvReplaceRequest {
+    repeated Field fields           = 1;
+    repeated uint64 indexs          = 2; // 索引列ID
+    repeated Match where_filters    = 3;
+    timestamp.Timestamp timestamp   = 4 [(gogoproto.nullable) = false];
+}
+
+message KvReplaceResponse {
+    int32 code              = 1;
+    //受影响的KV
+    uint64 affected_keys    = 2;
+}

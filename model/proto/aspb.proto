@@ -1,0 +1,102 @@
+syntax = "proto3";
+package aspb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+enum CommandType {
+    Invalid             = 0;
+    Build               = 1;
+    Start               = 2;
+    Stop                = 3;
+    Restart             = 4;
+}
+
+message BuildRequest {
+    string name             = 1;
+    string version          = 2;
+
+    string ip               = 3;
+    string port             = 4;
+    repeated string args    = 5;
+
+    string download_url     = 6;
+    string download_protocol= 7;
+    string download_user    = 8;
+    string download_password= 9;
+    string checksum         = 10;
+    string compressed_format= 11;
+}
+
+message BuildResponse {
+
+}
+
+message StartRequest {
+    string name             = 1;
+    string version          = 2;
+
+    string ip               = 3;
+    string port             = 4;
+    repeated string args    = 5;
+}
+
+message StartResponse {
+
+}
+
+message StopRequest {
+    string name             = 1;
+    string version          = 2;
+}
+
+message StopResponse {
+
+}
+
+message RestartRequest {
+    string name             = 1;
+    string version          = 2;
+}
+
+message RestartResponse {
+
+}
+
+message RequestHeader {
+    // 16 bytes, to distinguish request.
+    bytes uuid                = 1;
+    uint64 cluster_id         = 2;
+}
+
+message ResponseHeader {
+    // 16 bytes, to distinguish request.
+    bytes uuid                = 1;
+    uint64 cluster_id         = 2;
+    Error error               = 3;
+}
+
+message Request {
+    RequestHeader header                            = 1;
+    CommandType cmd_type                            = 2;
+    BuildRequest build                              = 3;
+    StartRequest start                              = 4;
+    StopRequest stop                                = 5;
+    RestartRequest restart                          = 6;
+}
+
+message Response {
+    ResponseHeader header                           = 1;
+    CommandType cmd_type                            = 2;
+    BuildResponse build                             = 3;
+    StartResponse start                             = 4;
+    StopResponse stop                               = 5;
+    RestartResponse restart                         = 6;
+}
+
+message Error {
+    string message = 1;
+}

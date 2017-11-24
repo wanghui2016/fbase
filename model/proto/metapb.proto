@@ -1,0 +1,303 @@
+syntax = "proto3";
+package metapb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message Cluster {
+    uint64 id              = 1;
+    // max peer count for a Range.
+    // master server will do the auto-balance if Range peer count mismatches.
+    uint32 max_peer_count  = 2;
+    // more attributes......
+}
+
+enum NodeState {
+    N_Invalid   = 0;
+    N_Login     = 1;
+    N_Logout    = 2;
+    N_Doubt     = 3;
+    N_Tombstone = 4;
+    N_Upgrade   = 5;
+    N_Initial   = 6;
+}
+
+message RaftAddrs {
+    string heartbeat_addr  = 1;
+    string replicate_addr  = 2;
+}
+
+message Node {
+    uint64 id             = 1;
+    string address        = 2;
+    NodeState state       = 3;
+    RaftAddrs raft_addrs  = 4;
+    string version        = 5;
+    // more attributes......
+}
+
+enum RangeState {
+    R_Invalid      = 0;
+    R_Init         = 1;
+    R_Normal       = 2;
+    R_Split        = 3;
+    R_Merge        = 4;
+    R_Remove       = 5;
+    R_LoadSnap     = 6;
+    R_Abnormal     = 7;
+    R_Offline      = 8;
+}
+
+message Peer {
+    uint64 id            = 1;
+    uint64 node_id       = 2;
+    // more attributes......
+}
+
+message RangeEpoch {
+    // Conf change version, auto increment when add or remove peer
+    uint64 conf_ver	= 1;
+    // Range version, auto increment when split or merge
+    uint64 version     = 2;
+}
+
+message Range {
+    uint64 id                  = 1;
+    // Range key range [start_key, end_key).
+    Key  start_key             = 2;
+    Key  end_key               = 3;
+    RangeEpoch range_epoch     = 4;
+    repeated Peer peers        = 5;
+    // Range state
+    RangeState state           = 6;
+    uint64 db_id               = 7;
+    uint64 table_id            = 8;
+    string db_name             = 9;
+    string table_name          = 10;
+    int64 create_time          = 11;
+}
+
+message Leader {
+    uint64 range_id      = 1;
+    uint64 node_id       = 2;
+    string node_addr     = 3;
+}
+
+message Replica {
+    uint64  node_id       = 1;
+    string  node_addr     = 2;
+    uint64  log_index     = 3;
+}
+
+message Route {
+    uint64 id                  = 1;
+    Key  start_key             = 2;
+    Key  end_key               = 3;
+    RangeEpoch range_epoch     = 4;
+    Leader leader              = 5;
+    //
+    repeated Replica replicas  = 6;
+}
+
+message DataBase {
+    string name                = 1;
+    uint64 id                  = 2;
+    string properties          = 3;// json
+    uint64 version             = 4;
+    int64 create_time          = 5;
+}
+
+enum DataType {
+    Invalid        = 0;
+    // 8 bit interger
+    Tinyint        = 1;
+    // 16 bit interger
+    Smallint       = 2;
+    // 32 bit interger
+    Int            = 3;
+    // 64 bit interger
+    BigInt         = 4;
+
+    // 32 bit float
+    Float          = 5;
+    // 64 bit float
+    Double         = 6;
+
+    // string UTF-8 max size 64 KB
+    Varchar        = 7;
+
+    // Blob max size 64 KB
+    Binary         = 8;
+
+    // DataTime 从1970年1月1日以来的天数
+    Date           = 9;
+    // DataTime 从1970年1月1日以来的秒数，精确到纳秒
+    TimeStamp      = 10;
+}
+
+message Column {
+    // max size 128 bytes
+    string name                = 1;
+    // 列名映射的ID,客户端不可见
+    uint64 id                  = 2;
+    DataType data_type         = 3;
+
+    // 针对int类型,是否是无符号类型
+    bool unsigned              = 4;
+
+    // 针对float和varchar类型
+    int32 scale                = 5;
+    // 针对float类型
+    int32 precision            = 6;
+    // 是否可以为空
+    bool nullable              = 7;
+    // 是否主键
+    uint64 primary_key         = 8; // 0 means not primary, !0 means primary NO.
+    // 列的顺序
+    int32 ordinal              = 9;
+    // 索引 Binary不支持索引，其他类型列默认均是索引列
+    bool index                 = 10;
+    // 自增 bool auto_increment
+    // 唯一键 bool unique
+
+    bytes default_value        = 11;
+    string properties          = 12;
+}
+
+message Primary {
+    string column_name = 1;
+    Primary next       = 2;
+}
+
+message TableEpoch {
+    // Conf change version, auto increment when add or remove column
+    uint64 conf_ver	   = 1;
+    // Route version, auto increment when split or merge
+    uint64 version     = 2;
+}
+
+message Table {
+    string name                 = 1;
+    string db_name              = 2;
+    uint64 db_id                = 3;
+    uint64 id                   = 4;
+    // 必须有主键
+    //repeated string primary_key = 4;
+    string properties           = 5;
+    repeated Column columns     = 6;
+    TableEpoch epoch            = 7;
+    repeated Column regxs       = 8;
+    int64 create_time           = 9;
+    // 默认不检查主键重复
+    bool pk_dup_check           = 10;
+}
+
+message Option {
+    // defines maximum size of a 'memdb' before flushed to
+    // 'sorted table'. 'memdb' is an in-memory DB backed by an on-disk
+    // unsorted journal.
+    // used for levelDB now!!!!!
+    int32    memdb_size   = 1;
+}
+
+enum KeyType {
+    KT_Invalid               = 0;
+    // +∞ 正无穷
+    KT_PositiveInfinity      = 1;
+    // -∞　负无穷
+    KT_NegativeInfinity      = 2;
+    // 普通Key
+    KT_Ordinary              = 3;
+}
+
+message Key {
+    bytes     key   = 1;
+    KeyType   type  = 2;
+}
+
+// 地域
+message Zone {
+    // 区域ID
+    uint64 zone_id     = 1;
+    string zone_name   = 2;
+}
+
+// 机房
+message Room {
+    uint64 room_id     = 1;
+    string room_name   = 2;
+}
+
+message Machine {
+    string   ip        = 1;
+    Zone     zone      = 2;
+    Room     room      = 3;
+    // 交换机IP
+    string switch_ip   = 4;
+    // 机架ID
+    uint64 frame_id    = 5;
+}
+
+// 机房策略
+message RoomV1Policy {
+    string room_name      = 1;
+    // 配置需要的DS数量
+    int32 ds_num          = 2;
+    // 同步策略: 1: 同步; 2: 异步
+    int32 sync            = 3;
+}
+
+// 地域策略
+message ZoneV1Policy {
+    string zone_name             = 1;
+    RoomV1Policy master          = 2;
+    repeated RoomV1Policy slaves = 3;
+}
+
+// 部署策略
+message DeployV1Policy {
+    // 主地域
+    ZoneV1Policy master            = 1;
+    // 副地域(一般用于异步备份)
+    repeated ZoneV1Policy slaves   = 2;
+}
+enum RwPolicy {
+    RW_Invalid      = 0;
+    // 读写分离
+    RW_Split        = 1;
+    // 混合读
+    RW_MutliRead    = 2;
+    // 仅master读写
+    RW_OnlyMaster   = 3;
+}
+
+message TableRwPolicy {
+    RwPolicy policy                = 1;
+    TableRwSplit rw_split          = 2;
+    TableMutliRead rw_mutli_read   = 3;
+    TableOnlyMaster rw_only_master = 4;
+}
+
+message TableRwSplit {
+
+}
+
+message TableMutliRead {
+    // 最大允许的副本日志落后条目数
+    uint32 replica_allow_max_backward      = 1;
+}
+
+message TableOnlyMaster {
+
+}
+
+message TopologyEpoch {
+    uint64     db_id           = 1;
+    uint64     table_id        = 2;
+    repeated Route routes      = 3;
+    TableEpoch  epoch          = 4;
+    TableRwPolicy rw_policy    = 5;
+}

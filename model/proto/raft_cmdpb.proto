@@ -1,0 +1,141 @@
+syntax = "proto3";
+package raft_cmdpb;
+
+import "metapb.proto";
+import "kvrpcpb.proto";
+import "timestamp.proto";
+import "errorpb.proto";
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message KvPair {
+    bytes key         = 1;
+    bytes value       = 2;
+    uint64 timestamp  = 3;
+    uint64 applyIndex = 4;
+}
+
+message MVCCKVPair {
+    bytes key                       = 1;
+    bool is_delete                  = 2;
+    bytes value                     = 3; 
+    timestamp.Timestamp timestamp   = 4 [(gogoproto.nullable) = false];
+    uint64 applyIndex               = 5;
+    int64 expire_at                 = 6;
+}
+
+enum CmdType {
+    Invalid        = 0;
+    RawGet         = 1;
+    RawPut         = 2;
+    RawDelete      = 3;
+    RawExecute     = 4;
+
+    Select         = 7;
+    Insert         = 8;
+    Delete         = 9;
+    Update         = 10;
+    Replace        = 11;
+    BatchInsert    = 12;
+}
+
+message Request {
+    metapb.RangeEpoch                 range_epoch            = 1;
+    CmdType                           cmd_type               = 2;
+
+    kvrpcpb.KvRawGetRequest           kv_raw_get_req         = 3;
+    kvrpcpb.KvRawPutRequest           kv_raw_put_req         = 4;
+    kvrpcpb.KvRawDeleteRequest        kv_raw_delete_req      = 5;
+    kvrpcpb.KvRawExecuteRequest       kv_raw_execute_req     = 6;
+
+    kvrpcpb.KvSelectRequest           kv_select_req          = 8;
+    kvrpcpb.KvInsertRequest           kv_insert_req          = 9;
+    kvrpcpb.KvDeleteRequest           kv_delete_req          = 10;
+    kvrpcpb.KvUpdateRequest           kv_update_req          = 11;
+    kvrpcpb.KvReplaceRequest          kv_replace_req         = 12;
+    kvrpcpb.KvBatchInsertRequest      kv_batch_insert_req    = 13;
+}
+
+message Response {
+    CmdType                            cmd_type                = 1;
+
+    kvrpcpb.KvRawGetResponse           kv_raw_get_resp         = 2;
+    kvrpcpb.KvRawPutResponse           kv_raw_put_resp         = 3;
+    kvrpcpb.KvRawDeleteResponse        kv_raw_delete_resp      = 4;
+    kvrpcpb.KvRawExecuteResponse       kv_raw_execute_resp     = 5;
+
+    kvrpcpb.KvSelectResponse           kv_select_resp          = 8;
+    kvrpcpb.KvInsertResponse           kv_insert_resp          = 9;
+    kvrpcpb.KvDeleteResponse           kv_delete_resp          = 10;
+    kvrpcpb.KvUpdateResponse           kv_update_resp          = 11;
+    kvrpcpb.KvReplaceResponse          kv_replace_resp         = 12;
+    kvrpcpb.KvBatchInsertResponse      kv_batch_insert_resp    = 13;
+
+    errorpb.Error                      error                   = 15;
+}
+
+message SplitRequest {
+    uint64 sch_id                = 1;
+    bytes split_key              = 2;
+    uint64 left_range_id         = 3;
+    uint64 right_range_id        = 4;
+}
+
+message SplitResponse {
+    metapb.Range left_range     = 1;
+    metapb.Range right_range    = 2;
+}
+
+message MergeRequest {
+
+}
+
+message MergeResponse {
+}
+
+message DestroyRequest {
+    uint64 sch_id           = 1;
+}
+
+message DestroyResponse {
+}
+
+enum AdminCmdType {
+    InvalidAdmin    = 0;
+    Split           = 1;
+    Merge           = 2;
+}
+
+message AdminRequest {
+    AdminCmdType cmd_type                  = 1;
+    SplitRequest split_req                 = 2;
+    MergeRequest merge_req                 = 3;
+}
+
+message AdminResponse {
+    AdminCmdType cmd_type                  = 1;
+    SplitResponse split_resp               = 2;
+    MergeResponse merge_resp               = 3;
+}
+
+enum MessageType {
+    InvalidMessage     = 0;
+    Data               = 1;
+    Admin              = 2;
+}
+
+message RaftCmdRequest {
+    MessageType type             = 1;
+    Request request              = 2;
+    AdminRequest admin_request   = 3;
+}
+
+message RaftCmdResponse {
+    MessageType type              = 1;
+    Response response             = 2;
+    AdminResponse admin_response  = 3;
+}
