@@ -611,7 +611,6 @@ func (t *Table) GetTopologyEpoch(cluster *Cluster, epoch *metapb.TableEpoch) (*m
 		defer t.lock.Unlock()
 		// 并发更新检查
 		if !lastTopologyUpdateTime.IsZero() && !lastTopologyUpdateTime.Equal(t.LastTopologyUpdateTime) {
-			log.Debug("return lasttopogogy 1")
 			return t.LastTopology, nil
 		}
 		routes := t.genRoutes(cluster)
@@ -625,7 +624,6 @@ func (t *Table) GetTopologyEpoch(cluster *Cluster, epoch *metapb.TableEpoch) (*m
 		t.LastTopologyUpdateTime = time.Now()
 	}
 
-	log.Debug("return lasttopogogy 2")
 	return t.LastTopology, nil
 }
 

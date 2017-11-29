@@ -318,7 +318,7 @@ func testGetCommand(t *testing.T, table *Table, p *Proxy, filter *Filter, stmt *
 	//	t.Fatal("build select result error: ", err)
 	//}
 	//selectResult := formatSelectResult(res)
-	reply, _ := json.Marshal(formatReply(table.columns, rowss, order, columns))
+	reply, _ := json.Marshal(formatReply(table.columns, rowss, order, columns, ""))
 	t.Log("getResult: ", string(reply))
 }
 

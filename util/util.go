@@ -110,6 +110,15 @@ func EncodeColumnValue(buf []byte, col *metapb.Column, sval []byte) ([]byte, err
 	}
 }
 
+func EncodeColumnValueBinary(buf []byte, col *metapb.Column, sval []byte) ([]byte, error) {
+	log.Debug("---column %v: %v", col.GetName(), sval)
+	if len(sval) == 0 {
+		return buf, nil
+	}
+		return encoding.EncodeBytesValue(buf, uint32(col.Id), sval), nil
+
+}
+
 // DecodeColumnValue 解码列
 func DecodeColumnValue(buf []byte, col *metapb.Column) ([]byte, interface{}, error) {
 	// check Null
@@ -175,6 +184,9 @@ func EncodePrimaryKey(buf []byte, col *metapb.Column, sval []byte) ([]byte, erro
 	default:
 		return nil, fmt.Errorf("unsupported type(%s) when encoding pk(%s)", col.DataType.String(), col.Name)
 	}
+}
+func EncodePrimaryKeyBinary(buf []byte, col *metapb.Column, sval []byte) ([]byte, error) {
+		return encoding.EncodeBytesAscending(buf, sval), nil
 }
 
 type Range struct {

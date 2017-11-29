@@ -1296,6 +1296,13 @@ func DecodeIntValue(b []byte) (remaining []byte, i int64, err error) {
 	b, _, i, err = DecodeNonsortingVarint(b)
 	return b, i, err
 }
+func DecodeIntValueWithLength(b []byte) (remaining []byte, length int, i int64, err error) {
+	b, err = decodeValueTypeAssert(b, Int)
+	if err != nil {
+		return b, 0, 0, err
+	}
+	return DecodeNonsortingVarint(b)
+}
 
 // DecodeFloatValue decodes a value encoded by EncodeFloatValue.
 func DecodeFloatValue(b []byte) (remaining []byte, f float64, err error) {
@@ -1309,6 +1316,17 @@ func DecodeFloatValue(b []byte) (remaining []byte, f float64, err error) {
 	var i uint64
 	b, i, err = DecodeUint64Ascending(b)
 	return b, math.Float64frombits(i), err
+}
+func DecodeFloatValueWithLength(b []byte) (remaining []byte, length int, err error) {
+	b, err = decodeValueTypeAssert(b, Float)
+	if err != nil {
+		return b, 0, err
+	}
+	if len(b) < 8 {
+		return b, 0, fmt.Errorf("float64 value should be exactly 8 bytes: %d", len(b))
+	}
+	b, _, err = DecodeUint64Ascending(b)
+	return b, 8, err
 }
 
 // DecodeBytesValue decodes a value encoded by EncodeBytesValue.

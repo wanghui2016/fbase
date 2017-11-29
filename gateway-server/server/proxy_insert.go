@@ -15,6 +15,8 @@ import (
 	"util"
 	"util/hack"
 	"util/log"
+	"runtime"
+	"util/deepcopy"
 )
 
 func (p *Proxy) HandleInsert(db string, stmt *sqlparser.Insert, args []interface{}) (*mysql.Result, error) {
@@ -74,7 +76,7 @@ func (p *Proxy) HandleInsert(db string, stmt *sqlparser.Insert, args []interface
 	}
 
 	// 按照表的每个列查找对应列值位置
-	colMap, t, err := p.matchInsertValues(t, cols)
+	colMap, t, err := p.matchInsertValues(t, cols, "")
 	if err != nil {
 		log.Error("[insert] table %s.%s match column values error(%v)", db, tableName, err)
 		return nil, err
@@ -108,7 +110,7 @@ func (p *Proxy) HandleInsert(db string, stmt *sqlparser.Insert, args []interface
 }
 
 // 查找每列对应的列值的偏移，处理自动添加列逻辑
-func (p *Proxy) matchInsertValues(t *Table, cols []string) (colMap map[string]int, newTable *Table, err error) {
+func (p *Proxy) matchInsertValues(t *Table, cols []string, version string) (colMap map[string]int, newTable *Table, err error) {
 	newTable = t
 	colMap = make(map[string]int)
 	unrecognized := make(map[string]int) // 未识别的列，不在原表定义中的列
@@ -152,6 +154,21 @@ func (p *Proxy) matchInsertValues(t *Table, cols []string) (colMap map[string]in
 			err = fmt.Errorf("update table %s.%s info failed", db, table)
 			return
 		}
+		if version == "1.0.0" {
+			t = newTable
+			t_ := deepcopy.Iface(t.Table).(*metapb.Table)
+			for _, col := range t_.Columns {
+				col.DataType = metapb.DataType_Varchar
+			}
+			routes_ := t.routes
+			policy_ := t.RwPolicy
+			t = NewTable(t_, t.cli)
+			t.routes = routes_
+			t.RwPolicy = policy_
+			log.Debug("command 1.0.0: %v", t.Columns)
+			newTable = t
+		}
+
 		for c, index := range unrecognized {
 			col := newTable.FindColumn(c)
 			if col == nil {
@@ -266,6 +283,13 @@ func (p *Proxy) insertWork(t *Table, groups [][]*kvrpcpb.KeyValue) (affected uin
 }
 
 func (p *Proxy) insertRows(t *Table, colMap map[string]int, rows []InsertRowValue) (affected uint64, duplicateKey []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b := make([]byte, 1024)
+			n := runtime.Stack(b, false)
+			log.Error("recover: %v, stack: %v", r, string(b[:n]))
+		}
+	}()
 	var kvPairs []*kvrpcpb.KeyValue
 	var kvGroup [][]*kvrpcpb.KeyValue
 

@@ -17,9 +17,8 @@ import (
 	"util/bufalloc"
 	"util/log"
 	"encoding/base64"
-	"encoding/binary"
-	"math"
 	"runtime"
+	"util/deepcopy"
 )
 
 type Response struct {
@@ -167,11 +166,24 @@ func (s *Server) handleKVCommand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query.commandFieldNameToLower()
+	//if query.Command.Version == "1.0.0" {
+	//	if err := query.commandTranslateValue(t.columns); err != nil {
+	//		log.Error("command transfer value: %v", err)
+	//		// TODO return
+	//	}
+	//}
+
 	if query.Command.Version == "1.0.0" {
-		if err := query.commandTranslateValue(t.columns); err != nil {
-			log.Error("command transfer value: %v", err)
-			// TODO return
+		t_ := deepcopy.Iface(t.Table).(*metapb.Table)
+		for _, col := range t_.Columns {
+			col.DataType = metapb.DataType_Varchar
 		}
+		routes_ := t.routes
+		policy_ := t.RwPolicy
+		t = NewTable(t_, t.cli)
+		t.routes = routes_
+		t.RwPolicy = policy_
+		log.Debug("command 1.0.0: %v", t.Columns)
 	}
 
 	start := time.Now()
@@ -180,19 +192,19 @@ func (s *Server) handleKVCommand(w http.ResponseWriter, r *http.Request) {
 		reply, err = query.getCommand(s.proxy, t)
 		if err != nil {
 			log.Error("getcommand error: %v", err)
-			reply = &Reply{Code: errCommandRun, Message: ErrHttpCmdRun.Error() }
+			reply = &Reply{Code: errCommandRun, Message: fmt.Errorf("%v: %v", ErrHttpCmdRun, err).Error() }
 		}
 	case "set":
 		reply, err = query.setCommand(s.proxy, t)
 		if err != nil {
 			log.Error("setcommand error: %v", err)
-			reply = &Reply{Code: errCommandRun, Message: ErrHttpCmdRun.Error() }
+			reply = &Reply{Code: errCommandRun, Message: fmt.Errorf("%v: %v", ErrHttpCmdRun, err).Error() }
 		}
 	case "del":
 		reply, err = query.delCommand(s.proxy, t)
 		if err != nil {
 			log.Error("delcommand error: %v", err)
-			reply = &Reply{Code: errCommandRun, Message: ErrHttpCmdRun.Error() }
+			reply = &Reply{Code: errCommandRun, Message: fmt.Errorf("%v: %v", ErrHttpCmdRun, err).Error() }
 		}
 	default:
 		log.Error("unknown command")
@@ -221,63 +233,64 @@ func translateValue(columnMap map[string]*metapb.Column, f string, v interface{}
 	if err != nil {
 		return nil, fmt.Errorf("base64 decode error: %v", err)
 	}
-	switch columnMap[f].GetDataType() {
-	case metapb.DataType_Tinyint:
-		fallthrough
-	case metapb.DataType_Smallint:
-		fallthrough
-	case metapb.DataType_Int:
-		fallthrough
-	case metapb.DataType_BigInt:
-		switch len(vByte) {
-		case 2:
-			vInt := binary.BigEndian.Uint16(vByte)
-			if columnMap[f].GetUnsigned() {
-				return vInt, nil
-			} else {
-				return int16(vInt), nil
-			}
-		case 4:
-			vInt := binary.BigEndian.Uint32(vByte)
-			if columnMap[f].GetUnsigned() {
-				return vInt, nil
-			} else {
-				return int32(vInt), nil
-			}
-		case 8:
-			vInt := binary.BigEndian.Uint64(vByte)
-			if columnMap[f].GetUnsigned() {
-				return vInt, nil
-			} else {
-				return int64(vInt), nil
-			}
-		default:
-			return nil, fmt.Errorf("wrong int len: %v", len(vByte))
-		}
-	case metapb.DataType_Float:
-		fallthrough
-	case metapb.DataType_Double:
-		switch len(vByte) {
-		case 4:
-			vFloat := binary.BigEndian.Uint32(vByte)
-			return math.Float32frombits(vFloat), nil
-		case 8:
-			vDouble := binary.BigEndian.Uint64(vByte)
-			return math.Float64frombits(vDouble), nil
-		default:
-			return nil, fmt.Errorf("wrong float len: %v", len(vByte))
-		}
-	case metapb.DataType_Date:
-		fallthrough
-	case metapb.DataType_TimeStamp:
-		fallthrough
-	case metapb.DataType_Varchar:
-		return string(vByte), nil
-	case metapb.DataType_Binary:
-		return vByte, nil
-	default:
-		return nil, errors.New("invalid data type")
-	}
+	return vByte, nil
+	//switch columnMap[f].GetDataType() {
+	//case metapb.DataType_Tinyint:
+	//	fallthrough
+	//case metapb.DataType_Smallint:
+	//	fallthrough
+	//case metapb.DataType_Int:
+	//	fallthrough
+	//case metapb.DataType_BigInt:
+	//	switch len(vByte) {
+	//	case 2:
+	//		vInt := binary.BigEndian.Uint16(vByte)
+	//		if columnMap[f].GetUnsigned() {
+	//			return vInt, nil
+	//		} else {
+	//			return int16(vInt), nil
+	//		}
+	//	case 4:
+	//		vInt := binary.BigEndian.Uint32(vByte)
+	//		if columnMap[f].GetUnsigned() {
+	//			return vInt, nil
+	//		} else {
+	//			return int32(vInt), nil
+	//		}
+	//	case 8:
+	//		vInt := binary.BigEndian.Uint64(vByte)
+	//		if columnMap[f].GetUnsigned() {
+	//			return vInt, nil
+	//		} else {
+	//			return int64(vInt), nil
+	//		}
+	//	default:
+	//		return nil, fmt.Errorf("wrong int len: %v", len(vByte))
+	//	}
+	//case metapb.DataType_Float:
+	//	fallthrough
+	//case metapb.DataType_Double:
+	//	switch len(vByte) {
+	//	case 4:
+	//		vFloat := binary.BigEndian.Uint32(vByte)
+	//		return math.Float32frombits(vFloat), nil
+	//	case 8:
+	//		vDouble := binary.BigEndian.Uint64(vByte)
+	//		return math.Float64frombits(vDouble), nil
+	//	default:
+	//		return nil, fmt.Errorf("wrong float len: %v", len(vByte))
+	//	}
+	//case metapb.DataType_Date:
+	//	fallthrough
+	//case metapb.DataType_TimeStamp:
+	//	fallthrough
+	//case metapb.DataType_Varchar:
+	//	return string(vByte), nil
+	//case metapb.DataType_Binary:
+	//	return vByte, nil
+	//default:
+	//	return nil, errors.New("invalid data type")
+	//}
 }
 
 func (query *Query) commandTranslateValue(columnMap map[string]*metapb.Column) error {
@@ -369,13 +382,18 @@ func (query *Query) getCommand(proxy *Proxy, t *Table) (*Reply, error) {
 		log.Debug("getcommand limit: %v", limit)
 
 		scope := query.parseScope()
-		rowss, err := proxy.doSelect(t, fieldList, matchs, limit, scope)
+		var rowss [][]*Row
+		switch query.Command.Version {
+		default:
+			log.Debug("t.Columns: %v, t.columns: %v, fieldList: %v", t.Columns, t.columns, fieldList)
+			rowss, err = proxy.doSelect(t, fieldList, matchs, limit, scope)
+		}
 
 		if err != nil {
 			log.Error("getcommand doselect error: %v", err)
 			return nil, err
 		}
-		return formatReply(t.columns, rowss, order, columns), nil
+		return formatReply(t.columns, rowss, order, columns, query.Command.Version), nil
 	} else {
 		var allRows [][]*Row
 		var tasks []*SelectTask
@@ -423,16 +441,20 @@ func (query *Query) getCommand(proxy *Proxy, t *Table) (*Reply, error) {
 			PutSelectTask(task)
 		}
 
-		return formatReply(t.columns, allRows, nil, columns), nil
+		return formatReply(t.columns, allRows, nil, columns, query.Command.Version), nil
 	}
 }
 
-func formatReply(columnMap map[string]*metapb.Column, rowss [][]*Row, order []*Order, columns []string) *Reply {
+func formatReply(columnMap map[string]*metapb.Column, rowss [][]*Row, order []*Order, columns []string, version string) *Reply {
+	log.Debug("reply format...")
 	rowset := make([][]interface{}, 0)
 	for _, rows := range rowss {
+		log.Debug("reply rows: %v", rows)
 		for _, row := range rows {
+			log.Debug("reply row: %v", row)
 			row_ := make([]interface{}, 0)
 			for _, f := range row.fields {
+				log.Debug("reply field: %v", f)
 				if f.value == nil {
 					row_ = append(row_, nil)
 					continue
@@ -567,7 +589,7 @@ func (query *Query) setCommand(proxy *Proxy, t *Table) (*Reply, error) {
 	cols := query.parseColumnNames()
 
 	// 按照表的每个列查找对应列值位置
-	colMap, t, err := proxy.matchInsertValues(t, cols)
+	colMap, t, err := proxy.matchInsertValues(t, cols, query.Command.Version)
 	if err != nil {
 		log.Error("[insert] table %s.%s match column values error(%v)", db, tableName, err)
 		return nil, err
@@ -589,7 +611,13 @@ func (query *Query) setCommand(proxy *Proxy, t *Table) (*Reply, error) {
 		return nil, err
 	}
 
-	affected, duplicateKey, err := proxy.insertRows(t, colMap, rows)
+	var affected uint64
+	var duplicateKey []byte
+	switch query.Command.Version {
+	default:
+		log.Debug("t.columns: %v, colMap: %v", t.columns, colMap)
+		affected, duplicateKey, err = proxy.insertRows(t, colMap, rows)
+	}
 	if err != nil {
 		log.Error("insert error %s- %s:%s", db, tableName, err.Error())
 		return nil, err

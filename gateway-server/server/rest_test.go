@@ -391,7 +391,7 @@ func TestRestKVCommand(t *testing.T) {
 			allRows = append(allRows, rowss...)
 		}
 	}
-	reply, _ := json.Marshal(formatReply(table_.columns, allRows, nil, columnstr))
+	reply, _ := json.Marshal(formatReply(table_.columns, allRows, nil, columnstr, ""))
 	t.Log("getResult====", string(reply))
 }
 

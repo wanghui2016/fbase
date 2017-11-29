@@ -10,6 +10,7 @@ import (
 	"model/pkg/kvrpcpb"
 	"model/pkg/metapb"
 	"util/log"
+	"runtime"
 )
 
 func (p *Proxy) HandleSelect(db string, stmt *sqlparser.Select, args []interface{}) (*mysql.Result, error) {
@@ -97,6 +98,13 @@ func (p *Proxy) HandleSelect(db string, stmt *sqlparser.Select, args []interface
 }
 
 func (p *Proxy) doSelect(t *Table, fieldList []*kvrpcpb.SelectField, matches []Match, limit *Limit, userScope *Scope) ([][]*Row, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b := make([]byte, 1024)
+			n := runtime.Stack(b, false)
+			log.Error("recover: %v, stack: %v", r, string(b[:n]))
+		}
+	}()
 	var err error
 
 	pbMatches, err := makePBMatches(t, matches)

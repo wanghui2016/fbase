@@ -23,13 +23,14 @@ func (c *Cluster) AddInstance(serverIp string, serverPort, raftHeartbeatPort, ra
 	var mac *Machine
 	var find bool
 	// TODO machines gray upgrade
-	//if mac, find = c.machines.FindMachine(serverIp); !find {
-	//	return nil, ErrNotExistMac
-	//}
+	mac, find = c.machines.FindMachine(serverIp)
+	if !find {
+		//return nil, ErrNotExistMac
+	}
 	ins, find := c.instancesAddr.FindInstance(serverAddr)
 	if find {
 		// TODO to comment
-		if mac, find = c.machines.FindMachine(serverIp); find {
+		if mac != nil {
 			mac.AddInstance(ins)
 		}
 		return ins, nil
@@ -54,7 +55,9 @@ func (c *Cluster) AddInstance(serverIp string, serverPort, raftHeartbeatPort, ra
 		return nil, err
 	}
 	ins = NewInstance(n)
-	mac.AddInstance(ins)
+	if mac != nil {
+		mac.AddInstance(ins)
+	}
 	c.instances.Add(ins)
 	c.instancesAddr.Add(ins)
 	return ins, nil
